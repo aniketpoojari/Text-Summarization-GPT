@@ -1,3 +1,7 @@
 data:
   pretraining_parquet: data/raw/pretraining/train-00001-of-00002.parquet
   pretraining_txt: data/raw/pretraining/pretraining.txt
+  vocab_dir: data/tokenizer/spm_model
+
+hyperparameters:
+  vocab_size: 10000

@@ -8,3 +8,14 @@ stages:
       - data.pretraining_txt
     outs:
       - data/raw/pretraining/pretraining.txt
+
+  create_tokenizer:
+    cmd: python src/create_tokenizer.py --config=params.yaml
+    deps:
+      - src/create_tokenizer.py
+    params:
+      - data.pretraining_txt
+      - data.vocab_dir
+      - hyperparameters.vocab_size
+    outs:
+      - data/tokenizer/spm_model.model
