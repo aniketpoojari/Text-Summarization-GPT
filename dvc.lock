@@ -1,0 +1,18 @@
+schema: '2.0'
+stages:
+  create_pretraining_data:
+    cmd: python src/create_pretraining_data.py --config=params.yaml
+    deps:
+    - path: src/create_pretraining_data.py
+      hash: md5
+      md5: 2897ac128c1e80fee8fc7f318dd99e88
+      size: 705
+    params:
+      params.yaml:
+        data.pretraining_parquet: data/raw/pretraining/train-00001-of-00002.parquet
+        data.pretraining_txt: data/raw/pretraining/pretraining.txt
+    outs:
+    - path: data/raw/pretraining/pretraining.txt
+      hash: md5
+      md5: a1188e77c69cecd0f276a7e355bf7b46
+      size: 271380149

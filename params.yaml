@@ -1,0 +1,3 @@
+data:
+  pretraining_parquet: data/raw/pretraining/train-00001-of-00002.parquet
+  pretraining_txt: data/raw/pretraining/pretraining.txt

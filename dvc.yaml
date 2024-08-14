@@ -1,0 +1,10 @@
+stages:
+  create_pretraining_data:
+    cmd: python src/create_pretraining_data.py --config=params.yaml
+    deps:
+      - src/create_pretraining_data.py
+    params:
+      - data.pretraining_parquet
+      - data.pretraining_txt
+    outs:
+      - data/raw/pretraining/pretraining.txt
