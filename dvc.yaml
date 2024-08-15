@@ -102,3 +102,43 @@ stages:
       - data/raw/summary/train_summary.pkl
       - data/raw/summary/val_full.pkl
       - data/raw/summary/val_summary.pkl
+
+  summary_training:
+    cmd: python src/summary_training.py --config=params.yaml
+    deps:
+      - src/summary_training.py
+      - data/raw/summary/train_full.pkl
+      - data/raw/summary/train_summary.pkl
+      - data/raw/summary/val_full.pkl
+      - data/raw/summary/val_summary.pkl
+      - saved_models/pretrained.pth
+
+    params:
+      - log_pretrained_model.model_dir
+      - hyperparameters.learning_rate
+      - hyperparameters.max_iters
+      - hyperparameters.eval_interval
+      - hyperparameters.block_size
+      - hyperparameters.batch_size
+      - hyperparameters.eval_iters
+      - data.train_full
+      - data.train_summary
+      - data.val_full
+      - data.val_summary
+      - mlflow_summary.experiment_name
+      - mlflow_summary.run_name
+      - mlflow_summary.registered_model_name
+      - mlflow_summary.server_uri
+    outs:
+      - training_summary_completion.txt
+
+  log_summary_model:
+    cmd: python src/log_summary_model.py --config=params.yaml
+    deps:
+      - src/log_summary_model.py
+      - training_summary_completion.txt
+    params:
+      - mlflow_summary.server_uri
+      - mlflow_summary.experiment_name
+    outs:
+      - saved_models/summary.pth

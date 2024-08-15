@@ -30,5 +30,14 @@ mlflow_pretraining:
   run_name: 1st
   registered_model_name: Pretrained GPT
 
+mlflow_summary:
+  server_uri: sqlite:///mlflow.db
+  experiment_name: Summary
+  run_name: 1st
+  registered_model_name: Summary GPT
+
 log_pretrained_model:
   model_dir: saved_models/pretrained.pth
+
+log_summary_model:
+  model_dir: saved_models/summary.pth

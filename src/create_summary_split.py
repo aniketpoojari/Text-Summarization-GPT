@@ -19,10 +19,10 @@ def create_split(config_path):
     n = int(0.9 * len(summarization_filtered_parquet))
 
     # SPLITS
-    train_X = torch.asarray(summarization_filtered_parquet.iloc[:n, 0].tolist())
-    train_y = torch.asarray(summarization_filtered_parquet.iloc[:n, 1].tolist())
-    val_X = torch.asarray(summarization_filtered_parquet.iloc[n:, 0].tolist())
-    val_y = torch.asarray(summarization_filtered_parquet.iloc[n:, 1].tolist())
+    train_X = summarization_filtered_parquet.iloc[:n, 0].tolist()
+    train_y = summarization_filtered_parquet.iloc[:n, 1].tolist()
+    val_X = summarization_filtered_parquet.iloc[n:, 0].tolist()
+    val_y = summarization_filtered_parquet.iloc[n:, 1].tolist()
 
     with open(train_full, "wb") as file:
         pickle.dump(train_X, file)
