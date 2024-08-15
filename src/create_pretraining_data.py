@@ -12,7 +12,7 @@ def create_pretraining_data(config_path):
 
     with open(pretraining_txt, "a", encoding="utf-8") as f:
         for i in range(file.shape[0]):
-            f.write(file.iloc[i].text + "\n")
+            f.write(file.iloc[i].text + " ")
 
 
 if __name__ == "__main__":

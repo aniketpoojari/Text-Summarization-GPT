@@ -1,6 +1,8 @@
 data:
   pretraining_parquet: data/raw/pretraining/train-00001-of-00002.parquet
   pretraining_txt: data/raw/pretraining/pretraining.txt
+  pretraining_train: data/raw/pretraining/pretraining_train.pkl
+  pretraining_val: data/raw/pretraining/pretraining_val.pkl
   vocab_dir: data/tokenizer/spm_model
 
 hyperparameters:

@@ -13,9 +13,25 @@ stages:
     cmd: python src/create_tokenizer.py --config=params.yaml
     deps:
       - src/create_tokenizer.py
+      - data/raw/pretraining/pretraining.txt
     params:
       - data.pretraining_txt
       - data.vocab_dir
       - hyperparameters.vocab_size
     outs:
       - data/tokenizer/spm_model.model
+
+  create_pretraining_split:
+    cmd: python src/create_pretraining_split.py --config=params.yaml
+    deps:
+      - src/create_pretraining_split.py
+      - data/raw/pretraining/pretraining.txt
+      - data/tokenizer/spm_model.model
+    params:
+      - data.pretraining_txt
+      - data.pretraining_train
+      - data.pretraining_val
+      - data.vocab_dir
+    outs:
+      - data/raw/pretraining/pretraining_train.pkl
+      - data/raw/pretraining/pretraining_val.pkl

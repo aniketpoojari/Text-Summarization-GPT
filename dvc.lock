@@ -5,8 +5,8 @@ stages:
     deps:
     - path: src/create_pretraining_data.py
       hash: md5
-      md5: 2897ac128c1e80fee8fc7f318dd99e88
-      size: 705
+      md5: 46854de467615cff9329b59e0761bbfa
+      size: 704
     params:
       params.yaml:
         data.pretraining_parquet: data/raw/pretraining/train-00001-of-00002.parquet
@@ -14,11 +14,15 @@ stages:
     outs:
     - path: data/raw/pretraining/pretraining.txt
       hash: md5
-      md5: a1188e77c69cecd0f276a7e355bf7b46
-      size: 271380149
+      md5: 2938ccdd6d68ddb37845a262020aa61f
+      size: 270479474
   create_tokenizer:
     cmd: python src/create_tokenizer.py --config=params.yaml
     deps:
+    - path: data/raw/pretraining/pretraining.txt
+      hash: md5
+      md5: 2938ccdd6d68ddb37845a262020aa61f
+      size: 270479474
     - path: src/create_tokenizer.py
       hash: md5
       md5: bf0af90be37de8d28f541c051108a21d
@@ -33,3 +37,33 @@ stages:
       hash: md5
       md5: 7af9c385fcb3ced1bbe55c6b15890f33
       size: 409670
+  create_pretraining_split:
+    cmd: python src/create_pretraining_split.py --config=params.yaml
+    deps:
+    - path: data/raw/pretraining/pretraining.txt
+      hash: md5
+      md5: 2938ccdd6d68ddb37845a262020aa61f
+      size: 270479474
+    - path: data/tokenizer/spm_model.model
+      hash: md5
+      md5: 7af9c385fcb3ced1bbe55c6b15890f33
+      size: 409670
+    - path: src/create_pretraining_split.py
+      hash: md5
+      md5: d5af4250321f5b62c7e52f981f225520
+      size: 1323
+    params:
+      params.yaml:
+        data.pretraining_train: data/raw/pretraining/pretraining_train.pkl
+        data.pretraining_txt: data/raw/pretraining/pretraining.txt
+        data.pretraining_val: data/raw/pretraining/pretraining_val.pkl
+        data.vocab_dir: data/tokenizer/spm_model
+    outs:
+    - path: data/raw/pretraining/pretraining_train.pkl
+      hash: md5
+      md5: 0070b22d1b69f11e4ad73fd0355c96e3
+      size: 226282912
+    - path: data/raw/pretraining/pretraining_val.pkl
+      hash: md5
+      md5: 520534386937c3074e1fbe05f41ec361
+      size: 24426380
