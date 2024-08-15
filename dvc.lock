@@ -67,3 +67,42 @@ stages:
       hash: md5
       md5: 520534386937c3074e1fbe05f41ec361
       size: 24426380
+  training_pretraining:
+    cmd: python src/training.py --config=params.yaml
+    deps:
+    - path: data/raw/pretraining/pretraining_train.pkl
+      hash: md5
+      md5: 0070b22d1b69f11e4ad73fd0355c96e3
+      size: 226282912
+    - path: data/raw/pretraining/pretraining_val.pkl
+      hash: md5
+      md5: 520534386937c3074e1fbe05f41ec361
+      size: 24426380
+    - path: src/training.py
+      hash: md5
+      md5: 856627f5e8d922507eaf7f7bfda51784
+      size: 4663
+    params:
+      params.yaml:
+        data.pretraining_train: data/raw/pretraining/pretraining_train.pkl
+        data.pretraining_val: data/raw/pretraining/pretraining_val.pkl
+        hyperparameters.batch_size: 32
+        hyperparameters.block_size: 128
+        hyperparameters.dropout: 0.2
+        hyperparameters.eval_interval: 100
+        hyperparameters.eval_iters: 50
+        hyperparameters.learning_rate: 0.0001
+        hyperparameters.max_iters: 100
+        hyperparameters.n_embd: 512
+        hyperparameters.n_head: 8
+        hyperparameters.n_layer: 8
+        hyperparameters.vocab_size: 10000
+        mlflow.experiment_name: Text Summarization
+        mlflow.registered_model_name: GPT
+        mlflow.run_name: 1st
+        mlflow.server_uri: sqlite:///mlflow.db
+    outs:
+    - path: training_completion.txt
+      hash: md5
+      md5: 8de729e47e95597f6e3bbd8b3715b090
+      size: 41

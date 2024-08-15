@@ -35,3 +35,30 @@ stages:
     outs:
       - data/raw/pretraining/pretraining_train.pkl
       - data/raw/pretraining/pretraining_val.pkl
+
+  training_pretraining:
+    cmd: python src/training.py --config=params.yaml
+    deps:
+      - src/training.py
+      - data/raw/pretraining/pretraining_train.pkl
+      - data/raw/pretraining/pretraining_val.pkl
+    params:
+      - hyperparameters.vocab_size
+      - hyperparameters.n_embd
+      - hyperparameters.block_size
+      - hyperparameters.n_head
+      - hyperparameters.n_layer
+      - hyperparameters.dropout
+      - hyperparameters.batch_size
+      - hyperparameters.learning_rate
+      - hyperparameters.max_iters
+      - hyperparameters.eval_iters
+      - hyperparameters.eval_interval
+      - data.pretraining_train
+      - data.pretraining_val
+      - mlflow.server_uri
+      - mlflow.experiment_name
+      - mlflow.run_name
+      - mlflow.registered_model_name
+    outs:
+      - training_completion.txt
