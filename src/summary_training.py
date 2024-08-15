@@ -1,5 +1,6 @@
 from common import read_params
-import model
+
+# from model import BigramLanguageModel
 import torch
 import argparse
 from model import estimate_loss

@@ -207,8 +207,8 @@ stages:
       size: 146466066
     - path: src/summary_training.py
       hash: md5
-      md5: f8dd263c91a3e3ab2d836aa564f41e9f
-      size: 4966
+      md5: 6968992a1c23cb2af264f77554cc7fc3
+      size: 4995
     params:
       params.yaml:
         data.train_full: data/raw/summary/train_full.pkl
@@ -229,7 +229,7 @@ stages:
     outs:
     - path: training_summary_completion.txt
       hash: md5
-      md5: a7c6c586b9055862c3b8fd0761059e7f
+      md5: 0e7df1b29e11d697dd72b0d59699fccf
       size: 41
   log_summary_model:
     cmd: python src/log_summary_model.py --config=params.yaml
@@ -240,7 +240,7 @@ stages:
       size: 1091
     - path: training_summary_completion.txt
       hash: md5
-      md5: a7c6c586b9055862c3b8fd0761059e7f
+      md5: 0e7df1b29e11d697dd72b0d59699fccf
       size: 41
     params:
       params.yaml:
