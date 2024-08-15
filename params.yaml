@@ -3,6 +3,8 @@ data:
   pretraining_txt: data/raw/pretraining/pretraining.txt
   pretraining_train: data/raw/pretraining/pretraining_train.pkl
   pretraining_val: data/raw/pretraining/pretraining_val.pkl
+  summarization_parquet: data/raw/summary/train-00000-of-00002.parquet
+  summarization_filtered_parquet: data/raw/summary/filtered.parquet
   vocab_dir: data/tokenizer/spm_model
 
 hyperparameters:

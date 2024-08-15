@@ -126,3 +126,24 @@ stages:
       hash: md5
       md5: 382a00e4730119a0414e264fe8dac3fc
       size: 146466066
+  create_summary_data:
+    cmd: python src/create_summary_data.py --config=params.yaml
+    deps:
+    - path: data/raw/summary/train-00000-of-00002.parquet
+      hash: md5
+      md5: 0f48652dbd5ff287cc94e40944524d21
+      size: 167815407
+    - path: src/create_summary_data.py
+      hash: md5
+      md5: d6fceb53c4a7665c938daf05d07608b2
+      size: 1407
+    params:
+      params.yaml:
+        data.summarization_parquet: data/raw/summary/train-00000-of-00002.parquet
+        data.vocab_dir: data/tokenizer/spm_model
+        hyperparameters.block_size: 128
+    outs:
+    - path: data/raw/summary/filtered.parquet
+      hash: md5
+      md5: 8e8f8dea46cf916fae032b0efc8b6459
+      size: 2033171

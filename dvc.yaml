@@ -73,3 +73,15 @@ stages:
       - mlflow_pretraining.experiment_name
     outs:
       - saved_models/pretrained.pth
+
+  create_summary_data:
+    cmd: python src/create_summary_data.py --config=params.yaml
+    deps:
+      - src/create_summary_data.py
+      - data/raw/summary/train-00000-of-00002.parquet
+    params:
+      - data.summarization_parquet
+      - hyperparameters.block_size
+      - data.vocab_dir
+    outs:
+      - data/raw/summary/filtered.parquet
