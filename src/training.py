@@ -33,10 +33,10 @@ def training(config_path):
     with open(pretraining_val, "rb") as file:
         val = torch.tensor(pickle.load(file), dtype=torch.long)
 
-    experiment_name = config["mlflow"]["experiment_name"]
-    run_name = config["mlflow"]["run_name"]
-    registered_model_name = config["mlflow"]["registered_model_name"]
-    server_uri = config["mlflow"]["server_uri"]
+    experiment_name = config["mlflow_pretraining"]["experiment_name"]
+    run_name = config["mlflow_pretraining"]["run_name"]
+    registered_model_name = config["mlflow_pretraining"]["registered_model_name"]
+    server_uri = config["mlflow_pretraining"]["server_uri"]
     mlflow.set_tracking_uri(server_uri)
     mlflow.set_experiment(experiment_name=experiment_name)
 

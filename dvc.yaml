@@ -56,9 +56,20 @@ stages:
       - hyperparameters.eval_interval
       - data.pretraining_train
       - data.pretraining_val
-      - mlflow.server_uri
-      - mlflow.experiment_name
-      - mlflow.run_name
-      - mlflow.registered_model_name
+      - mlflow_pretraining.server_uri
+      - mlflow_pretraining.experiment_name
+      - mlflow_pretraining.run_name
+      - mlflow_pretraining.registered_model_name
     outs:
       - training_completion.txt
+
+  log_pretraining_model:
+    cmd: python src/log_pretraining_model.py --config=params.yaml
+    deps:
+      - src/log_pretraining_model.py
+      - training_completion.txt
+    params:
+      - mlflow_pretraining.server_uri
+      - mlflow_pretraining.experiment_name
+    outs:
+      - saved_models/pretrained.pth

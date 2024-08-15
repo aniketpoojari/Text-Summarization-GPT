@@ -18,8 +18,8 @@ hyperparameters:
   eval_iters: 50
   eval_interval: 100
 
-mlflow:
+mlflow_pretraining:
   server_uri: sqlite:///mlflow.db
-  experiment_name: Text Summarization
+  experiment_name: Pretraining
   run_name: 1st
-  registered_model_name: GPT
+  registered_model_name: Pretrained GPT
