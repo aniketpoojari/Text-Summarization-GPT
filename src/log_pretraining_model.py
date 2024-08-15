@@ -19,7 +19,7 @@ def log_production_model(config_path):
     run_id = df["run_id"].values
     artifact_uri = df["artifact_uri"].values[0].split("mlruns")[1]
     src = f"./mlruns{artifact_uri}/{run_id[0]}/data/model.pth"
-    dest = "saved_models/pretrained.pth"
+    dest = config["log_pretrained_model"]["model_dir"]
     shutil.copyfile(src, dest)
 
 

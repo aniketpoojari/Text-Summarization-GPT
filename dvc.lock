@@ -111,8 +111,8 @@ stages:
     deps:
     - path: src/log_pretraining_model.py
       hash: md5
-      md5: 11204d953337d7af6b2f9b8d50c92ff8
-      size: 1088
+      md5: 4b580361fdbe807c154f56f37b56aafe
+      size: 1102
     - path: training_completion.txt
       hash: md5
       md5: 8132d890ed809c771d6ca9558b0ab46d
