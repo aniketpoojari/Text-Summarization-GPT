@@ -147,3 +147,38 @@ stages:
       hash: md5
       md5: 8e8f8dea46cf916fae032b0efc8b6459
       size: 2033171
+  create_summary_split:
+    cmd: python src/create_summary_split.py --config=params.yaml
+    deps:
+    - path: data/raw/summary/filtered.parquet
+      hash: md5
+      md5: 8e8f8dea46cf916fae032b0efc8b6459
+      size: 2033171
+    - path: src/create_summary_split.py
+      hash: md5
+      md5: d5a7a0d60d5e52ead036b3083da54ec1
+      size: 1495
+    params:
+      params.yaml:
+        data.summarization_filtered_parquet: data/raw/summary/filtered.parquet
+        data.train_full: data/raw/summary/train_full.pkl
+        data.train_summary: data/raw/summary/train_summary.pkl
+        data.val_full: data/raw/summary/val_full.pkl
+        data.val_summary: data/raw/summary/val_summary.pkl
+    outs:
+    - path: data/raw/summary/train_full.pkl
+      hash: md5
+      md5: 1b2d298aae148554bfb81cfb97eb7782
+      size: 8840603
+    - path: data/raw/summary/train_summary.pkl
+      hash: md5
+      md5: 8888e92d6d3211dd156a3e7c3478e2a0
+      size: 8840603
+    - path: data/raw/summary/val_full.pkl
+      hash: md5
+      md5: 39955f485dbf9f6f7d451c241d317262
+      size: 983451
+    - path: data/raw/summary/val_summary.pkl
+      hash: md5
+      md5: a79824dede81ef127b5e443be0f8c6c1
+      size: 983451

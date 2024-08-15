@@ -85,3 +85,20 @@ stages:
       - data.vocab_dir
     outs:
       - data/raw/summary/filtered.parquet
+
+  create_summary_split:
+    cmd: python src/create_summary_split.py --config=params.yaml
+    deps:
+      - src/create_summary_split.py
+      - data/raw/summary/filtered.parquet
+    params:
+      - data.summarization_filtered_parquet
+      - data.train_full
+      - data.train_summary
+      - data.val_full
+      - data.val_summary
+    outs:
+      - data/raw/summary/train_full.pkl
+      - data/raw/summary/train_summary.pkl
+      - data/raw/summary/val_full.pkl
+      - data/raw/summary/val_summary.pkl

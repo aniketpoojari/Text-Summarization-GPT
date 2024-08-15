@@ -1,2 +1,6 @@
 /train-00000-of-00002.parquet
 /filtered.parquet
+/train_full.pkl
+/train_summary.pkl
+/val_full.pkl
+/val_summary.pkl
