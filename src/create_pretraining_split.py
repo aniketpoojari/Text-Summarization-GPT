@@ -1,8 +1,7 @@
 from common import read_params
 import argparse
-import sentencepiece as spm
-import torch
 import pickle
+from transformers import GPT2Tokenizer
 
 
 def create_split(config_path):
@@ -10,23 +9,22 @@ def create_split(config_path):
     pretraining_txt = config["data"]["pretraining_txt"]
     pretraining_train = config["data"]["pretraining_train"]
     pretraining_val = config["data"]["pretraining_val"]
-    vocab_dir = config["data"]["vocab_dir"] + ".model"
 
     # LOAD THE COMPLETE FILE
-    with open(pretraining_txt, "r", encoding="utf-8") as f:
-        text = f.read()
+    with open(pretraining_txt, "r") as file:
+        text = file.read()
 
-    # LOAD THE TOKENIZER
-    tokenizer = spm.SentencePieceProcessor(model_file=vocab_dir)
+    # Load the GPT-2 tokenizer
+    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 
-    # ENCODE ENTIRE DATA
-    text = tokenizer.encode(text, out_type=int)
+    # Add special tokens
+    special_tokens_dict = {"pad_token": "<PAD>", "sep_token": "<SEP>"}
+    tokenizer.add_special_tokens(special_tokens_dict)
 
-    # TRAIN TEST SPLIT
-    # text = torch.tensor(text, dtype=torch.long)
+    text = tokenizer.encode(text)
 
     # SPLIT SIZE
-    n = int(0.9 * len(text))  # first 90% will be train, rest val
+    n = int(0.7 * len(text))  # first 90% will be train, rest val
 
     # SPLITS
     train_data = text[:n]

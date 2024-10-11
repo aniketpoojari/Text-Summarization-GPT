@@ -10,7 +10,10 @@ def create_tokenizer(config_path):
     vocab_dir = config["data"]["vocab_dir"]
 
     spm.SentencePieceTrainer.train(
-        input=pretraining_txt, model_prefix=vocab_dir, vocab_size=vocab_size
+        input=pretraining_txt,
+        model_prefix=vocab_dir,
+        vocab_size=vocab_size,
+        user_defined_symbols="<PAD>,<SEP>",
     )
 
 

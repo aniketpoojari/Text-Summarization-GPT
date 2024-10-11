@@ -1,7 +1,5 @@
 from common import read_params
 import argparse
-import sentencepiece as spm
-import torch
 import pickle
 import pandas as pd
 
@@ -16,7 +14,7 @@ def create_split(config_path):
 
     summarization_filtered_parquet = pd.read_parquet(summarization_filtered_parquet)
 
-    n = int(0.9 * len(summarization_filtered_parquet))
+    n = int(0.8 * len(summarization_filtered_parquet))
 
     # SPLITS
     train_X = summarization_filtered_parquet.iloc[:n, 0].tolist()

@@ -77,8 +77,8 @@ def training(config_path):
                     block_size,
                     batch_size,
                     device,
-                    train,
-                    val,
+                    pre_train=train,
+                    pre_val=val,
                 )
 
                 print(

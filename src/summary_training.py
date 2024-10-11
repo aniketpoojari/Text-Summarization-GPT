@@ -1,6 +1,4 @@
 from common import read_params
-
-# from model import BigramLanguageModel
 import torch
 import argparse
 from model import estimate_loss
@@ -15,11 +13,11 @@ def summary_training(config_path):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     config = read_params(config_path)
     pretrained_model = config["log_pretrained_model"]["model_dir"]
-    learning_rate = float(config["hyperparameters"]["learning_rate"])
-    max_iters = config["hyperparameters"]["max_iters"]
+    learning_rate = float(config["summary_hyperparameters"]["learning_rate"])
+    max_iters = config["summary_hyperparameters"]["max_iters"]
     eval_interval = config["hyperparameters"]["eval_interval"]
     block_size = config["hyperparameters"]["block_size"]
-    batch_size = config["hyperparameters"]["batch_size"]
+    batch_size = config["summary_hyperparameters"]["batch_size"]
     eval_iters = config["hyperparameters"]["eval_iters"]
 
     train_full = config["data"]["train_full"]
@@ -43,7 +41,7 @@ def summary_training(config_path):
     mlflow.set_tracking_uri(server_uri)
     mlflow.set_experiment(experiment_name=experiment_name)
 
-    model = torch.load(pretrained_model)
+    model = torch.load(pretrained_model).to(device)
 
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=learning_rate, weight_decay=1e-4
@@ -67,7 +65,7 @@ def summary_training(config_path):
                     val_summ=val_y,
                 )
                 print(
-                    f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}"
+                    f"step {iter}: train loss {losses['train']:.4f}, train_rouge {losses['train_rouge']:.4f}, val loss {losses['val']:.4f}, val_rouge {losses['val_rouge']:.4f}"
                 )
                 mlflow.log_metric("Train Loss", losses["train"], step=iter)
                 mlflow.log_metric("Val Loss", losses["val"], step=iter)
@@ -93,10 +91,10 @@ def summary_training(config_path):
             targets = yb.view(B * T)
 
             valid_mask = targets != -1
-            targets = targets[valid_mask]
-            logits = logits[valid_mask]
+            targets = targets[valid_mask][1:]
+            logits = logits[valid_mask][:-1]
 
-            loss = F.cross_entropy(logits, targets)
+            loss = F.cross_entropy(logits, targets, ignore_index=50257)
 
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
@@ -107,19 +105,6 @@ def summary_training(config_path):
             f"{mlflow_run.info.run_id}",
             registered_model_name=registered_model_name,
         )
-
-        # with open(pretraining_train, "rb") as file:
-        # train = torch.tensor(pickle.load(file), dtype=torch.long)
-
-        # model = BigramLanguageModel(
-        #     vocab_size, n_embd, block_size, n_head, n_layer, dropout, device
-        # ).to(device)
-
-        # print(sum(p.numel() for p in model.parameters()) / 1e6, "M parameters")
-
-        # optimizer = torch.optim.AdamW(
-        # model.parameters(), lr=learning_rate, weight_decay=1e-4
-        # )
 
     with open("training_summary_completion.txt", "w") as file:
         # Get the current date and time

@@ -1,4 +1,4 @@
-/pretraining.txt
-/train-00001-of-00002.parquet
+/pretraining.pkl
 /pretraining_train.pkl
 /pretraining_val.pkl
+/pretraining.txt

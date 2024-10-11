@@ -2,6 +2,31 @@ import torch
 from torch.nn import functional as F
 from data_loader import get_batch
 import torch.nn as nn
+from transformers import GPT2Tokenizer
+from rouge_score import rouge_scorer
+
+
+def clean_and_decode(predictions, targets, tokenizer):
+
+    scorer = rouge_scorer.RougeScorer(["rougeL"], use_stemmer=True)
+
+    rouge_l_scores = []
+    for prediction, target in zip(predictions, targets):
+        # Remove Full Text
+        mask = target != -1
+        prediction = prediction[mask]
+        target = target[mask]
+
+        prediction = tokenizer.decode(prediction, skip_special_tokens=True)
+        target = tokenizer.decode(target, skip_special_tokens=True)
+
+        score = scorer.score(target, prediction)
+        rouge_l_scores.append(score["rougeL"].fmeasure)
+
+    # Averaging across all samples
+    avg_rouge_l = sum(rouge_l_scores) / len(rouge_l_scores)
+
+    return avg_rouge_l
 
 
 def estimate_loss(
@@ -19,11 +44,15 @@ def estimate_loss(
     val_summ=None,
 ):
     out = {}
+    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+    special_tokens_dict = {"pad_token": "<PAD>", "sep_token": "<SEP>"}
+    tokenizer.add_special_tokens(special_tokens_dict)
 
     model.eval()
     for split in ["train", "val"]:
 
         losses = torch.zeros(eval_iters)
+        rouge = torch.zeros(eval_iters)
         for k in range(eval_iters):
 
             X, Y = get_batch(
@@ -42,24 +71,25 @@ def estimate_loss(
 
             logits = model(X)
 
-            # predictions = logits.argmax(dim=-1)
-            # # Decode predictions and targets to text
-            # decoded_predictions = [clean_and_decode(pred.tolist(), sp) for pred in predictions]
-            # decoded_targets = [clean_and_decode(target.tolist(), sp) for target in Y]
-            # evaluate_rouge(decoded_predictions, decoded_targets)
+            if step == "summary":
+                rouge_scorer = clean_and_decode(logits.argmax(dim=-1), Y, tokenizer)
+                rouge[k] = rouge_scorer
 
             B, T, C = logits.shape
             logits = logits.view(B * T, C)
             targets = Y.view(B * T)
 
-            valid_mask = targets != -1
-            targets = targets[valid_mask]
-            logits = logits[valid_mask]
+            if step == "summary":
+                valid_mask = targets != -1
+                targets = targets[valid_mask][1:]
+                logits = logits[valid_mask][:-1]
 
-            loss = F.cross_entropy(logits, targets)
+            loss = F.cross_entropy(logits, targets, ignore_index=50257)
             losses[k] = loss.item()
 
         out[split] = losses.mean()
+        if step == "summary":
+            out[split + "_rouge"] = rouge.mean()
 
     model.train()
 
@@ -170,7 +200,7 @@ class BigramLanguageModel(nn.Module):
         self.device = device
 
     def forward(self, idx):
-        B, T = idx.shape
+        _, T = idx.shape  # B, T
 
         # idx and targets are both (B,T) tensor of integers
         tok_emb = self.token_embedding_table(idx)  # (B,T,C)

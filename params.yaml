@@ -1,9 +1,9 @@
 data:
-  pretraining_parquet: data/raw/pretraining/train-00001-of-00002.parquet
   pretraining_txt: data/raw/pretraining/pretraining.txt
   pretraining_train: data/raw/pretraining/pretraining_train.pkl
   pretraining_val: data/raw/pretraining/pretraining_val.pkl
-  summarization_parquet: data/raw/summary/train-00000-of-00002.parquet
+  summarization_full_txt: data/raw/summary/train.src.txt
+  summarization_summary_txt: data/raw/summary/train.tgt.txt
   summarization_filtered_parquet: data/raw/summary/filtered.parquet
   train_full: data/raw/summary/train_full.pkl
   train_summary: data/raw/summary/train_summary.pkl
@@ -12,17 +12,17 @@ data:
   vocab_dir: data/tokenizer/spm_model
 
 hyperparameters:
-  vocab_size: 10000
-  n_embd: 512
+  vocab_size: 50259
+  n_embd: 256
   block_size: 128
   n_head: 8
   n_layer: 8
   dropout: 0.2
-  batch_size: 32
-  learning_rate: 1e-4
-  max_iters: 500
-  eval_iters: 50
-  eval_interval: 100
+  batch_size: 16
+  learning_rate: 5e-4
+  max_iters: 30000
+  eval_iters: 100
+  eval_interval: 500
 
 mlflow_pretraining:
   server_uri: sqlite:///mlflow.db
@@ -41,3 +41,8 @@ log_pretrained_model:
 
 log_summary_model:
   model_dir: saved_models/summary.pth
+
+summary_hyperparameters:
+  learning_rate: 1e-4
+  max_iters: 10000
+  batch_size: 16
