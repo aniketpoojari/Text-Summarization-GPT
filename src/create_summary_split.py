@@ -2,6 +2,7 @@ from common import read_params
 import argparse
 import pickle
 import pandas as pd
+from sklearn.utils import shuffle
 
 
 def create_split(config_path):
@@ -12,8 +13,15 @@ def create_split(config_path):
     val_full = config["data"]["val_full"]
     val_summary = config["data"]["val_summary"]
 
+    # LOAD THE COMPLETE FILE
     summarization_filtered_parquet = pd.read_parquet(summarization_filtered_parquet)
 
+    # SHUFFLE
+    summarization_filtered_parquet = shuffle(
+        summarization_filtered_parquet, random_state=42
+    )
+
+    # SPLIT SIZE
     n = int(0.8 * len(summarization_filtered_parquet))
 
     # SPLITS

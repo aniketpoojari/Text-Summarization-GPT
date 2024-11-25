@@ -1,12 +1,13 @@
 import torch
 from torch.nn import functional as F
-from data_loader import get_batch
+from data_loader import DataLoaderPretraining, DataLoaderSummary
 import torch.nn as nn
 from transformers import GPT2Tokenizer
 from rouge_score import rouge_scorer
+import inspect
 
 
-def clean_and_decode(predictions, targets, tokenizer):
+def rouge_score(predictions, targets, tokenizer):
 
     scorer = rouge_scorer.RougeScorer(["rougeL"], use_stemmer=True)
 
@@ -14,8 +15,8 @@ def clean_and_decode(predictions, targets, tokenizer):
     for prediction, target in zip(predictions, targets):
         # Remove Full Text
         mask = target != -1
-        prediction = prediction[mask]
-        target = target[mask]
+        prediction = prediction[mask][:-1]
+        target = target[mask][1:]
 
         prediction = tokenizer.decode(prediction, skip_special_tokens=True)
         target = tokenizer.decode(target, skip_special_tokens=True)
@@ -29,187 +30,291 @@ def clean_and_decode(predictions, targets, tokenizer):
     return avg_rouge_l
 
 
-def estimate_loss(
+def estimate_loss_pretraining(
     model,
-    step,
-    eval_iters,
-    block_size,
     batch_size,
+    mini_batch_size,
     device,
-    pre_train=None,
-    pre_val=None,
-    train_full=None,
-    train_summ=None,
-    val_full=None,
-    val_summ=None,
+    eval_iters,
+    train_dataloader,
+    val_dataloader,
 ):
-    out = {}
-    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-    special_tokens_dict = {"pad_token": "<PAD>", "sep_token": "<SEP>"}
-    tokenizer.add_special_tokens(special_tokens_dict)
-
+    # set model to evaluation
     model.eval()
+
+    # set precision
+    torch.set_float32_matmul_precision("medium")
+
+    # output dictionary
+    out = {}
+
+    # loop over train and val sets
     for split in ["train", "val"]:
 
+        # set dataloader
+        dataloader = train_dataloader if split == "train" else val_dataloader
+
+        # reset dataloader
+        dataloader.reset()
+
+        # get number of steps
+        steps = batch_size // mini_batch_size
+
+        # initialize losses
         losses = torch.zeros(eval_iters)
-        rouge = torch.zeros(eval_iters)
+
+        # loop over eval iterations
         for k in range(eval_iters):
 
-            X, Y = get_batch(
-                step,
-                split,
-                block_size,
-                batch_size,
-                device,
-                pre_train,
-                pre_val,
-                train_full,
-                train_summ,
-                val_full,
-                val_summ,
-            )
+            with torch.no_grad():
 
-            logits = model(X)
+                # initialize batch loss
+                batch_loss = 0
 
-            if step == "summary":
-                rouge_scorer = clean_and_decode(logits.argmax(dim=-1), Y, tokenizer)
-                rouge[k] = rouge_scorer
+                # loop over steps
+                for _ in range(steps):
 
-            B, T, C = logits.shape
-            logits = logits.view(B * T, C)
-            targets = Y.view(B * T)
+                    # get batch
+                    X, Y = dataloader.next_batch()
 
-            if step == "summary":
-                valid_mask = targets != -1
-                targets = targets[valid_mask][1:]
-                logits = logits[valid_mask][:-1]
+                    # set precision
+                    with torch.autocast(device_type=device, dtype=torch.bfloat16):
 
-            loss = F.cross_entropy(logits, targets, ignore_index=50257)
-            losses[k] = loss.item()
+                        # forward
+                        logits = model(X)
 
+                        # reshape
+                        B, T, C = logits.shape
+                        logits = logits.view(B * T, C)
+                        targets = Y.view(B * T)
+
+                        # calculate loss
+                        loss = F.cross_entropy(logits, targets)
+
+                    # update batch loss
+                    batch_loss += loss.detach().item()
+
+                # update losses
+                losses[k] = batch_loss / steps
+
+        # update output
         out[split] = losses.mean()
-        if step == "summary":
-            out[split + "_rouge"] = rouge.mean()
-
-    model.train()
 
     return out
 
 
-class Head(nn.Module):
-    """one head of self-attention"""
+def estimate_loss_summary(
+    model,
+    batch_size,
+    mini_batch_size,
+    device,
+    eval_iters,
+    val_train_dataloader,
+    val_val_dataloader,
+    tokenizer,
+):
+    # set model to evaluation
+    model.eval()
 
-    def __init__(self, n_embd, head_size, block_size, dropout):
+    # set precision
+    torch.set_float32_matmul_precision("medium")
+
+    # output dictionary
+    out = {}
+
+    for split in ["train", "val"]:
+
+        dataloader = val_train_dataloader if split == "train" else val_val_dataloader
+
+        dataloader.reset()
+
+        steps = batch_size // mini_batch_size
+
+        losses = torch.zeros(eval_iters)
+        rouge = torch.zeros(eval_iters)
+
+        for k in range(eval_iters):
+
+            with torch.no_grad():
+
+                mini_batch_loss = 0
+                mini_batch_rouge = 0
+
+                for _ in range(steps):
+
+                    X, Y = dataloader.next_batch()
+
+                    with torch.autocast(device_type=device, dtype=torch.bfloat16):
+                        logits = model(X)
+
+                        mini_batch_rouge += rouge_score(
+                            logits.argmax(dim=-1), Y, tokenizer
+                        )
+
+                        B, T, C = logits.shape
+                        logits = logits.view(B * T, C)
+                        targets = Y.view(B * T)
+
+                        valid_mask = targets != -1
+                        logits = logits[valid_mask][:-1]
+                        targets = targets[valid_mask][1:]
+
+                        loss = F.cross_entropy(logits, targets)
+
+                    mini_batch_loss += loss.detach().item()
+
+                losses[k] = mini_batch_loss / steps
+                rouge[k] = mini_batch_rouge / steps
+
+        out[split] = losses.mean()
+        out[split + "_rouge"] = rouge.mean()
+
+    return out
+
+
+class CausalSelfAttention(nn.Module):
+
+    def __init__(self, n_embd, n_head):  # dropout:
         super().__init__()
-        self.key = nn.Linear(n_embd, head_size, bias=False)
-        self.query = nn.Linear(n_embd, head_size, bias=False)
-        self.value = nn.Linear(n_embd, head_size, bias=False)
-        self.register_buffer("tril", torch.tril(torch.ones(block_size, block_size)))
+        # key, query, value projections for all heads, but in a batch
+        self.c_attn = nn.Linear(n_embd, 3 * n_embd)
 
-        self.dropout = nn.Dropout(dropout)
+        # output projection
+        self.c_proj = nn.Linear(n_embd, n_embd)
+        self.c_proj.NANOGPT_SCALE_INIT = 1
+
+        self.n_head = n_head
+        self.n_embd = n_embd
+
+        # self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
         B, T, C = x.shape
+        qkv = self.c_attn(x)
+        q, k, v = qkv.split(self.n_embd, dim=2)
+        k = k.view(B, T, self.n_head, C // self.n_head).transpose(
+            1, 2
+        )  # (B, nh, T, hs)
+        q = q.view(B, T, self.n_head, C // self.n_head).transpose(
+            1, 2
+        )  # (B, nh, T, hs)
+        v = v.view(B, T, self.n_head, C // self.n_head).transpose(
+            1, 2
+        )  # (B, nh, T, hs)
+        y = F.scaled_dot_product_attention(q, k, v, is_causal=True)  # flash attention
+        y = (
+            y.transpose(1, 2).contiguous().view(B, T, C)
+        )  # re-assemble all head outputs side by side
+        # output projection
+        y = self.c_proj(y)
+        return y
 
-        k = self.key(x)  # (B,T,C)
-        q = self.query(x)  # (B,T,C)
-        v = self.value(x)  # (B,T,C)
 
-        # compute attention scores ("affinities")
-        wei = q @ k.transpose(-2, -1) * C**-0.5  # (B, T, C) @ (B, C, T) -> (B, T, T)
-        wei = wei.masked_fill(self.tril[:T, :T] == 0, float("-inf"))  # (B, T, T)
-        wei = F.softmax(wei, dim=-1)  # (B, T, T)
-        wei = self.dropout(wei)
+class MLP(nn.Module):
 
-        # perform the weighted aggregation of the values
-        out = wei @ v  # (B, T, T) @ (B, T, C) -> (B, T, C)
-
-        return out
-
-
-class MultiHeadAttention(nn.Module):
-    """multiple heads of self-attention in parallel"""
-
-    def __init__(self, num_heads, n_embd, head_size, dropout, block_size):
+    def __init__(self, n_embd):
         super().__init__()
-        self.heads = nn.ModuleList(
-            [Head(n_embd, head_size, block_size, dropout) for _ in range(num_heads)]
-        )
-        self.proj = nn.Linear(n_embd, n_embd)
-        self.dropout = nn.Dropout(dropout)
+        self.c_fc = nn.Linear(n_embd, 4 * n_embd)
+        self.gelu = nn.GELU(approximate="tanh")
+        self.c_proj = nn.Linear(4 * n_embd, n_embd)
+        self.c_proj.NANOGPT_SCALE_INIT = 1
 
     def forward(self, x):
-        out = torch.cat([h(x) for h in self.heads], dim=-1)
-        out = self.dropout(self.proj(out))
-        return out
-
-
-class FeedFoward(nn.Module):
-    """a simple linear layer followed by a non-linearity"""
-
-    def __init__(self, n_embd, dropout):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(n_embd, 4 * n_embd),
-            nn.GELU(),
-            nn.Linear(4 * n_embd, n_embd),
-            nn.Dropout(dropout),
-        )
-
-    def forward(self, x):
-        return self.net(x)
-
-
-class Block(nn.Module):
-    """Transformer block: communication followed by computation"""
-
-    def __init__(self, n_head, n_embd, dropout, block_size):
-        # n_embd: embedding dimension, n_head: the number of heads we'd like
-        super().__init__()
-        head_size = n_embd // n_head
-        self.sa = MultiHeadAttention(n_head, n_embd, head_size, dropout, block_size)
-        self.ffwd = FeedFoward(n_embd, dropout)
-        self.ln1 = nn.LayerNorm(n_embd)
-        self.ln2 = nn.LayerNorm(n_embd)
-
-    def forward(self, x):
-        x = x + self.sa(self.ln1(x))
-        x = x + self.ffwd(self.ln2(x))
+        x = self.c_fc(x)
+        x = self.gelu(x)
+        x = self.c_proj(x)
         return x
 
 
-# super simple bigram model
-class BigramLanguageModel(nn.Module):
+class Block(nn.Module):
+
+    def __init__(self, n_embd, n_head):
+        super().__init__()
+        self.ln_1 = nn.LayerNorm(n_embd)
+        self.attn = CausalSelfAttention(n_embd, n_head)
+        self.ln_2 = nn.LayerNorm(n_embd)
+        self.mlp = MLP(n_embd)
+
+    def forward(self, x):
+        x = x + self.attn(self.ln_1(x))
+        x = x + self.mlp(self.ln_2(x))
+        return x
+
+
+class GPT(nn.Module):
 
     def __init__(
         self, vocab_size, n_embd, block_size, n_head, n_layer, dropout, device
     ):
         super().__init__()
-        # each token directly reads off the logits for the next token from a lookup table
-        self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
-        self.position_embedding_table = nn.Embedding(block_size, n_embd)
 
-        self.blocks = nn.Sequential(
-            *[Block(n_head, n_embd, dropout, block_size) for _ in range(n_layer)]
+        self.n_layer = n_layer
+
+        self.transformer = nn.ModuleDict(
+            dict(
+                wte=nn.Embedding(vocab_size, n_embd),
+                wpe=nn.Embedding(block_size, n_embd),
+                h=nn.ModuleList([Block(n_embd, n_head) for _ in range(n_layer)]),
+                ln_f=nn.LayerNorm(n_embd),
+            )
         )
+        self.lm_head = nn.Linear(n_embd, vocab_size, bias=False)
 
-        self.ln_f = nn.LayerNorm(n_embd)  # final layer norm
+        # weight sharing scheme
+        self.transformer.wte.weight = self.lm_head.weight
 
-        self.lm_head = nn.Linear(n_embd, vocab_size)
+        # init params
+        self.apply(self._init_weights)
 
-        self.device = device
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            std = 0.02
+            if hasattr(module, "NANOGPT_SCALE_INIT"):
+                std *= (2 * self.n_layer) ** -0.5
+            torch.nn.init.normal_(module.weight, mean=0.0, std=std)
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
     def forward(self, idx):
-        _, T = idx.shape  # B, T
+        # idx is of shape (B, T)
+        B, T = idx.shape
 
-        # idx and targets are both (B,T) tensor of integers
-        tok_emb = self.token_embedding_table(idx)  # (B,T,C)
-        pos_emb = self.position_embedding_table(
-            torch.arange(T, device=self.device)
-        )  # (T,C)
-        x = tok_emb + pos_emb  # (B,T,C)
-        x = self.blocks(x)  # (B,T,C)
-        x = self.ln_f(x)  # (B,T,C)
-        logits = self.lm_head(x)  # (B,T,vocab_size)
+        # forward the token and posisition embeddings
+        pos = torch.arange(0, T, dtype=torch.long, device=idx.device)  # shape (T)
+        pos_emb = self.transformer.wpe(pos)  # position embeddings of shape (T, n_embd)
+        tok_emb = self.transformer.wte(idx)  # token embeddings of shape (B, T, n_embd)
+        x = tok_emb + pos_emb
+
+        # forward the blocks of the transformer
+        for block in self.transformer.h:
+            x = block(x)
+
+        # forward the final layernorm and the classifier
+        x = self.transformer.ln_f(x)
+        logits = self.lm_head(x)  # (B, T, vocab_size)
 
         return logits
+
+    def configure_optimizers(self, weight_decay, learning_rate, device_type):
+        # start with all of the candidate parameters (that require grad)
+        param_dict = {pn: p for pn, p in self.named_parameters()}
+        param_dict = {pn: p for pn, p in param_dict.items() if p.requires_grad}
+        # create optim groups. Any parameters that is 2D will be weight decayed, otherwise no.
+        # i.e. all weight tensors in matmuls + embeddings decay, all biases and layernorms don't.
+        decay_params = [p for n, p in param_dict.items() if p.dim() >= 2]
+        nodecay_params = [p for n, p in param_dict.items() if p.dim() < 2]
+        optim_groups = [
+            {"params": decay_params, "weight_decay": weight_decay},
+            {"params": nodecay_params, "weight_decay": 0.0},
+        ]
+        num_decay_params = sum(p.numel() for p in decay_params)
+        num_nodecay_params = sum(p.numel() for p in nodecay_params)
+        # Create AdamW optimizer and use the fused version if it is available
+        fused_available = "fused" in inspect.signature(torch.optim.AdamW).parameters
+        use_fused = fused_available and "cuda" in device_type
+        optimizer = torch.optim.AdamW(
+            optim_groups, lr=learning_rate, betas=(0.9, 0.95), eps=1e-8, fused=use_fused
+        )
+        return optimizer

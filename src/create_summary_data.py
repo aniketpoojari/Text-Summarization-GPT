@@ -26,6 +26,9 @@ def clean_text_pipeline(text):
     # Keep letters, numbers, and whitespace
     text = re.sub(r"[^A-Za-z0-9\s\-'\"]", "", text)
 
+    # Remove extra spaces
+    text = re.sub(r"\s+", " ", text).strip()
+
     return text
 
 
@@ -48,26 +51,35 @@ def create_summary_data(config_path):
     with open(summarization_summary_txt, "r") as file1:
         summary = file1.readlines()
 
-    train = pd.DataFrame(columns=["article", "summary"])
+    # Set the target limit
+    target_limit = 200000
+    data = []
 
-    for line in tqdm.tqdm(range(len(full_length)), desc="Reading file"):
-        full = tokenizer.encode(clean_text_pipeline(full_length[line]))
-        summ = tokenizer.encode(clean_text_pipeline(summary[line]))
-        l = len(full) + 1 + len(summ)
-        if l <= block_size:
-            # X
-            X = full + [tokenizer.sep_token_id] + summ
-            X += [tokenizer.pad_token_id] * (block_size - len(X))
+    with tqdm.tqdm(total=target_limit, desc="Creating summary training data") as pbar:
 
-            # y
-            y = [-1] * len(full) + [tokenizer.sep_token_id] + summ
-            y += [tokenizer.pad_token_id] * (block_size - len(y))
+        for line in range(len(full_length)):
+            full = tokenizer.encode(clean_text_pipeline(full_length[line] + " summary"))
+            summ = tokenizer.encode(clean_text_pipeline(summary[line]))
+            l = len(full) + 1 + len(summ)
+            if l <= block_size:
+                # X
+                X = full + [tokenizer.sep_token_id] + summ
+                X += [tokenizer.pad_token_id] * (block_size - len(X))
 
-            train.loc[len(train.index)] = [X, y]
-        if train.shape[0] == 50000:
-            break
+                # y
+                y = [-1] * len(full) + [tokenizer.sep_token_id] + summ
+                y += [tokenizer.pad_token_id] * (block_size - len(y))
 
-    train.to_parquet(summarization_filtered_parquet, engine="pyarrow")
+                data.append([X, y])
+
+                pbar.update(1)
+
+            if len(data) >= target_limit:
+                break
+
+    df = pd.DataFrame(data, columns=["article", "summary"])
+
+    df.to_parquet(summarization_filtered_parquet, engine="pyarrow")
 
 
 if __name__ == "__main__":

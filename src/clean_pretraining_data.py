@@ -2,14 +2,15 @@ from common import read_params
 import argparse
 import re
 import tqdm
+import random
 
 
 def clean_text_pipeline(text):
     # Replace custom markers with actual characters
     text = text.replace("-lrb-", "(")
     text = text.replace("-rrb-", ")")
-    text = text.replace("-lsb-", "[")  # Assuming -lsb- represents left square bracket
-    text = text.replace("-rsb-", "]")  # Assuming -rsb- represents right square bracket
+    text = text.replace("-lsb-", "[")
+    text = text.replace("-rsb-", "]")
 
     # Define regex pattern to match text within parentheses
     text = re.sub(r"\([^\)]*\)", "", text)
@@ -32,14 +33,24 @@ def create_pretraining_data(config_path):
     summarization_full_txt = config["data"]["summarization_full_txt"]
     pretraining_txt = config["data"]["pretraining_txt"]
 
-    text = ""
+    text = []
     with open(summarization_full_txt, "r", encoding="utf-8") as f:
         total_lines = sum(
             1 for _ in open(summarization_full_txt, "r", encoding="utf-8")
         )
-        for line in tqdm.tqdm(f, total=total_lines, desc="Reading file"):
-            text += clean_text_pipeline(line) + " "
+        for line in tqdm.tqdm(f, total=total_lines, desc="Cleaning Data"):
+            text.append(clean_text_pipeline(line))
 
+    # Shuffle the text
+    random.shuffle(text)
+
+    # Join the text
+    text = " ".join(text)
+
+    # Remove extra spaces
+    text = re.sub(r"\s+", " ", text).strip()
+
+    # Write to file
     with open(pretraining_txt, "w") as file:
         file.write(text)
 

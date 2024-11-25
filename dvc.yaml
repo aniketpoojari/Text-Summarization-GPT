@@ -23,10 +23,10 @@ stages:
       - data/raw/pretraining/pretraining_train.pkl
       - data/raw/pretraining/pretraining_val.pkl
 
-  training_pretraining:
-    cmd: python src/training.py --config=params.yaml
+  pretraining:
+    cmd: python src/pretraining.py --config=params.yaml
     deps:
-      - src/training.py
+      - src/pretraining.py
       - data/raw/pretraining/pretraining_train.pkl
       - data/raw/pretraining/pretraining_val.pkl
     params:
@@ -36,9 +36,11 @@ stages:
       - hyperparameters.n_head
       - hyperparameters.n_layer
       - hyperparameters.dropout
-      - hyperparameters.batch_size
-      - hyperparameters.learning_rate
+      - hyperparameters.epochs
       - hyperparameters.max_iters
+      - hyperparameters.batch_size
+      - hyperparameters.mini_batch_size
+      - hyperparameters.learning_rate
       - hyperparameters.eval_iters
       - hyperparameters.eval_interval
       - data.pretraining_train
@@ -71,7 +73,6 @@ stages:
       - data.summarization_full_txt
       - data.summarization_summary_txt
       - hyperparameters.block_size
-      - data.vocab_dir
     outs:
       - data/raw/summary/filtered.parquet
 
@@ -92,7 +93,7 @@ stages:
       - data/raw/summary/val_full.pkl
       - data/raw/summary/val_summary.pkl
 
-  summary_training:
+  summary_finetuning:
     cmd: python src/summary_training.py --config=params.yaml
     deps:
       - src/summary_training.py
@@ -105,10 +106,11 @@ stages:
     params:
       - log_pretrained_model.model_dir
       - summary_hyperparameters.learning_rate
+      - summary_hyperparameters.epochs
       - summary_hyperparameters.max_iters
       - summary_hyperparameters.batch_size
+      - summary_hyperparameters.mini_batch_size
       - hyperparameters.eval_interval
-      - hyperparameters.block_size
       - hyperparameters.eval_iters
       - data.train_full
       - data.train_summary

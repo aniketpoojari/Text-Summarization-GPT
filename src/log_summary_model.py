@@ -15,7 +15,7 @@ def log_production_model(config_path):
     experiment_id = mlflow.get_experiment_by_name(experiment_name).experiment_id
     df = pd.DataFrame(mlflow.search_runs(experiment_ids=experiment_id))
     df = df[df["status"] == "FINISHED"]
-    df = df[df["metrics.Val Loss"] == df["metrics.Val Loss"].min()]
+    df = df[df["metrics.Val Rouge"] == df["metrics.Val Rouge"].max()]
     run_id = df["run_id"].values
     artifact_uri = df["artifact_uri"].values[0].split("mlruns")[1]
     src = f"./mlruns{artifact_uri}/{run_id[0]}/data/model.pth"

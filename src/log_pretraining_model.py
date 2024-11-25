@@ -10,14 +10,22 @@ def log_production_model(config_path):
 
     experiment_name = config["mlflow_pretraining"]["experiment_name"]
     server_uri = config["mlflow_pretraining"]["server_uri"]
+
     mlflow.set_tracking_uri(server_uri)
 
+    # get experiment id
     experiment_id = mlflow.get_experiment_by_name(experiment_name).experiment_id
+
+    # get best run id
     df = pd.DataFrame(mlflow.search_runs(experiment_ids=experiment_id))
     df = df[df["status"] == "FINISHED"]
     df = df[df["metrics.Val Loss"] == df["metrics.Val Loss"].min()]
     run_id = df["run_id"].values
+
+    # get artifact uri
     artifact_uri = df["artifact_uri"].values[0].split("mlruns")[1]
+
+    # copy model
     src = f"./mlruns{artifact_uri}/{run_id[0]}/data/model.pth"
     dest = config["log_pretrained_model"]["model_dir"]
     shutil.copyfile(src, dest)

@@ -14,12 +14,9 @@ def create_split(config_path):
     with open(pretraining_txt, "r") as file:
         text = file.read()
 
-    # Load the GPT-2 tokenizer
+    # Load the GPT-2 tokenizer and add special tokens
     tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-
-    # Add special tokens
-    special_tokens_dict = {"pad_token": "<PAD>", "sep_token": "<SEP>"}
-    tokenizer.add_special_tokens(special_tokens_dict)
+    tokenizer.add_special_tokens({"pad_token": "<PAD>", "sep_token": "<SEP>"})
 
     text = tokenizer.encode(text)
 

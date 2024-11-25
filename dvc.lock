@@ -42,12 +42,12 @@ stages:
     deps:
     - path: data/raw/pretraining/pretraining.txt
       hash: md5
-      md5: 6f83785aa68dc81b75faa37aa0af1a85
-      size: 679267164
+      md5: 7e61cd1866876abffc3a068628e772a2
+      size: 661651698
     - path: src/create_pretraining_split.py
       hash: md5
-      md5: 141a7e355a1b545cfaab277d003b38b7
-      size: 1285
+      md5: 61ab49704a62c0e821a88516c6012b7f
+      size: 1233
     params:
       params.yaml:
         data.pretraining_train: data/raw/pretraining/pretraining_train.pkl
@@ -56,42 +56,42 @@ stages:
     outs:
     - path: data/raw/pretraining/pretraining_train.pkl
       hash: md5
-      md5: c1d4955f4d4763889577798d9332764b
-      size: 296949960
+      md5: d1c7aa6967917a5768967ce55f7cf919
+      size: 277218805
     - path: data/raw/pretraining/pretraining_val.pkl
       hash: md5
-      md5: 2066eaae8ef621307e6b209283ae7f23
-      size: 126730194
+      md5: 40dc3eb7918500f1c58d5484b679f46e
+      size: 118806909
   training_pretraining:
     cmd: python src/training.py --config=params.yaml
     deps:
     - path: data/raw/pretraining/pretraining_train.pkl
       hash: md5
-      md5: c1d4955f4d4763889577798d9332764b
-      size: 296949960
+      md5: d1c7aa6967917a5768967ce55f7cf919
+      size: 277218805
     - path: data/raw/pretraining/pretraining_val.pkl
       hash: md5
-      md5: 2066eaae8ef621307e6b209283ae7f23
-      size: 126730194
+      md5: 40dc3eb7918500f1c58d5484b679f46e
+      size: 118806909
     - path: src/training.py
       hash: md5
-      md5: 517c5187ba1f6dd34a4de18704615099
-      size: 4729
+      md5: 6e0ea1cc9ff8d946f30b9162be0aa0d1
+      size: 8018
     params:
       params.yaml:
         data.pretraining_train: data/raw/pretraining/pretraining_train.pkl
         data.pretraining_val: data/raw/pretraining/pretraining_val.pkl
-        hyperparameters.batch_size: 16
+        hyperparameters.batch_size: 256
         hyperparameters.block_size: 128
         hyperparameters.dropout: 0.2
         hyperparameters.eval_interval: 500
-        hyperparameters.eval_iters: 100
-        hyperparameters.learning_rate: 0.0005
-        hyperparameters.max_iters: 30000
-        hyperparameters.n_embd: 256
-        hyperparameters.n_head: 8
-        hyperparameters.n_layer: 8
-        hyperparameters.vocab_size: 50259
+        hyperparameters.eval_iters: 50
+        hyperparameters.learning_rate: 0.0002
+        hyperparameters.max_iters: 2500
+        hyperparameters.n_embd: 768
+        hyperparameters.n_head: 12
+        hyperparameters.n_layer: 12
+        hyperparameters.vocab_size: 50260
         mlflow_pretraining.experiment_name: Pretraining
         mlflow_pretraining.registered_model_name: Pretrained GPT
         mlflow_pretraining.run_name: 1st
@@ -99,7 +99,7 @@ stages:
     outs:
     - path: training_completion.txt
       hash: md5
-      md5: 2452299d926e3aa75c66aa6ce2439111
+      md5: 4d9e68984b63d4316d85c191df4efe8e
       size: 41
   log_pretraining_model:
     cmd: python src/log_pretraining_model.py --config=params.yaml
@@ -110,7 +110,7 @@ stages:
       size: 1102
     - path: training_completion.txt
       hash: md5
-      md5: 2452299d926e3aa75c66aa6ce2439111
+      md5: 4d9e68984b63d4316d85c191df4efe8e
       size: 41
     params:
       params.yaml:
@@ -119,8 +119,8 @@ stages:
     outs:
     - path: saved_models/pretrained.pth
       hash: md5
-      md5: 63d26e6254a6146ef5290978c44f9216
-      size: 132885074
+      md5: 3e7693b9175e2f56111041a1beba14c0
+      size: 495079898
   create_summary_data:
     cmd: python src/create_summary_data.py --config=params.yaml
     deps:
@@ -134,8 +134,8 @@ stages:
       size: 198500841
     - path: src/create_summary_data.py
       hash: md5
-      md5: f9ec66abfbfbfcac516b627226e14e20
-      size: 2792
+      md5: 49fcb1c04089c5331b4563d64ecad26e
+      size: 3087
     params:
       params.yaml:
         data.summarization_full_txt: data/raw/summary/train.src.txt
@@ -145,19 +145,19 @@ stages:
     outs:
     - path: data/raw/summary/filtered.parquet
       hash: md5
-      md5: eef96fc6eb39d84f775cbfc42cab5a5f
-      size: 6112404
+      md5: 15a6d84883820916bcd399aea22e4c51
+      size: 22115058
   create_summary_split:
     cmd: python src/create_summary_split.py --config=params.yaml
     deps:
     - path: data/raw/summary/filtered.parquet
       hash: md5
-      md5: eef96fc6eb39d84f775cbfc42cab5a5f
-      size: 6112404
+      md5: 15a6d84883820916bcd399aea22e4c51
+      size: 22115058
     - path: src/create_summary_split.py
       hash: md5
-      md5: ca0a2443e15cfb1e3028c62e44af5ca0
-      size: 1392
+      md5: 22d79c4ce2c2a0ea424dd4661f04974e
+      size: 1603
     params:
       params.yaml:
         data.summarization_filtered_parquet: data/raw/summary/filtered.parquet
@@ -168,50 +168,50 @@ stages:
     outs:
     - path: data/raw/summary/train_full.pkl
       hash: md5
-      md5: 6c2dc73ea3e5d755691d2cf437de765a
-      size: 42285986
+      md5: cf7043b7790ef8e66c371af05c8ea3bb
+      size: 169143614
     - path: data/raw/summary/train_summary.pkl
       hash: md5
-      md5: 600c08956845d94e1174bc8aa19fe7ac
-      size: 42285986
+      md5: 29e00afef97771c099282b59508be1aa
+      size: 169143614
     - path: data/raw/summary/val_full.pkl
       hash: md5
-      md5: fa8628c32313ee4e630379ac729d6605
-      size: 10571579
+      md5: 5e13774ebe07267aeb03cb1f9d3e0e39
+      size: 42285986
     - path: data/raw/summary/val_summary.pkl
       hash: md5
-      md5: bdec48d792078362bef6081a42202f00
-      size: 10571579
+      md5: 2a873aea9dcf88c233ee63487b301729
+      size: 42285986
   summary_training:
     cmd: python src/summary_training.py --config=params.yaml
     deps:
     - path: data/raw/summary/train_full.pkl
       hash: md5
-      md5: 6c2dc73ea3e5d755691d2cf437de765a
-      size: 42285986
+      md5: 6fb580b1351c4d36e242454ac6d063c4
+      size: 676574126
     - path: data/raw/summary/train_summary.pkl
       hash: md5
-      md5: 600c08956845d94e1174bc8aa19fe7ac
-      size: 42285986
+      md5: d70b8133dc934c6d4c52b4c4560d2232
+      size: 676574126
     - path: data/raw/summary/val_full.pkl
       hash: md5
-      md5: fa8628c32313ee4e630379ac729d6605
-      size: 10571579
+      md5: 74d40d254b003f37702ede7b78205aa2
+      size: 169143614
     - path: data/raw/summary/val_summary.pkl
       hash: md5
-      md5: bdec48d792078362bef6081a42202f00
-      size: 10571579
+      md5: 0b799b15c7eed3ad60304d88a549a34b
+      size: 169143614
     - path: saved_models/pretrained.pth
       hash: md5
-      md5: 63d26e6254a6146ef5290978c44f9216
-      size: 132885074
+      md5: 3e7693b9175e2f56111041a1beba14c0
+      size: 495079898
     - path: src/summary_training.py
       hash: md5
-      md5: efc3c181cafccca26ea7f183284545b7
-      size: 4613
+      md5: e7cc5a079489ad88b8d4fd24436cb6d2
+      size: 9076
     - path: training_completion.txt
       hash: md5
-      md5: 2452299d926e3aa75c66aa6ce2439111
+      md5: 4d9e68984b63d4316d85c191df4efe8e
       size: 41
     params:
       params.yaml:
@@ -221,30 +221,30 @@ stages:
         data.val_summary: data/raw/summary/val_summary.pkl
         hyperparameters.block_size: 128
         hyperparameters.eval_interval: 500
-        hyperparameters.eval_iters: 100
+        hyperparameters.eval_iters: 50
         log_pretrained_model.model_dir: saved_models/pretrained.pth
         mlflow_summary.experiment_name: Summary
         mlflow_summary.registered_model_name: Summary GPT
         mlflow_summary.run_name: 1st
         mlflow_summary.server_uri: sqlite:///mlflow.db
-        summary_hyperparameters.batch_size: 16
-        summary_hyperparameters.learning_rate: 0.0001
-        summary_hyperparameters.max_iters: 10000
+        summary_hyperparameters.batch_size: 32
+        summary_hyperparameters.learning_rate: 5e-05
+        summary_hyperparameters.max_iters: 20000
     outs:
     - path: training_summary_completion.txt
       hash: md5
-      md5: 59ec4fa1dcebc02119d68ca96399d76a
+      md5: 37de536de9ffa66d1fbb5b4bca0f0f1e
       size: 41
   log_summary_model:
     cmd: python src/log_summary_model.py --config=params.yaml
     deps:
     - path: src/log_summary_model.py
       hash: md5
-      md5: dabbdf6f258b35c1a41eb8f468e02fcd
-      size: 1091
+      md5: 263925412f6167fdcc88a9461eb50f60
+      size: 1093
     - path: training_summary_completion.txt
       hash: md5
-      md5: 59ec4fa1dcebc02119d68ca96399d76a
+      md5: 37de536de9ffa66d1fbb5b4bca0f0f1e
       size: 41
     params:
       params.yaml:
@@ -253,8 +253,8 @@ stages:
     outs:
     - path: saved_models/summary.pth
       hash: md5
-      md5: 2869e7ab4745a2a9541b71a99a282283
-      size: 132884434
+      md5: 969753da701acd92efae787710f8da2f
+      size: 495079898
   clean_and_tokenize_pretraining_data:
     cmd: python src/clean_and_tokenize_pretraining_data.py --config=params.yaml
     deps:
@@ -284,8 +284,8 @@ stages:
       size: 695194407
     - path: src/clean_pretraining_data.py
       hash: md5
-      md5: bd24acad6677b0bf9834c26b45d4d622
-      size: 1719
+      md5: e93befc4bc1ea356725ff7c017c8b5d9
+      size: 1833
     params:
       params.yaml:
         data.pretraining_txt: data/raw/pretraining/pretraining.txt
@@ -293,5 +293,5 @@ stages:
     outs:
     - path: data/raw/pretraining/pretraining.txt
       hash: md5
-      md5: 6f83785aa68dc81b75faa37aa0af1a85
-      size: 679267164
+      md5: 7e61cd1866876abffc3a068628e772a2
+      size: 661651698
