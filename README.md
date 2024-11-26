@@ -74,7 +74,7 @@ pip install -r requirements.txt
 
 - Downloaded from the Xsum Dataset - https://huggingface.co/datasets/sentence-transformers/xsum
 - save the train.src.txt and train.tgt.txt files in the data/raw/summary folder
-- track both the files using DVC
+- track both the files using DVC - dvc add path/to/directory/
 
 ## 🤖 Model Training
 
@@ -87,13 +87,6 @@ mlflow server --backend-store-uri sqlite:///mlflow.db --host localhost
 dvc repro
 ```
 
-## 🚀 Usage
-
-```bash
-# Run the Streamlit app
-streamlit run saved_models/website.py
-```
-
 ## 📈 Evaluation
 
 - RMSE score is used to evaluate the pretrained model
@@ -104,6 +97,13 @@ streamlit run saved_models/website.py
 - Got a ROUGE-L score of 0.54 on the validation set for the summary model
 - Go to MLFLOW server to look at all the results.
 - saved_models folder will contain the final model after the pipeline is executed using MLFlow
+
+## 🚀 Usage
+
+```bash
+# Run the Streamlit app
+streamlit run saved_models/website.py
+```
 
 ## Docker
 
