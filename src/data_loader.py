@@ -1,6 +1,3 @@
-import torch
-
-
 class DataLoaderPretraining:
     def __init__(self, B, T, data, device):
         self.B = B
