@@ -6,8 +6,8 @@ Text Summarization GPT
 
 - [Introduction](#introduction)
 - [Features](#features)
-- [Requirements](#requirements)
 - [Installation](#installation)
+- [Requirements](#requirements)
 - [Data](#data)
 - [Model Training](#model-training)
 - [Usage](#usage)
@@ -43,6 +43,19 @@ The goal of this project is to create a model that generates high-quality, conci
 - [Best Summary Model Selection](src/log_summary_model.py)
 - [Streamlit App](saved_models/website.py)
 
+## 🚚 Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/aniketpoojari/Monocular-Depth-Estimation.git
+
+# Change directory
+cd Monocular-Depth-Estimation
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
 ## 🛠️ Requirements
 
 - argparse
@@ -56,19 +69,6 @@ The goal of this project is to create a model that generates high-quality, conci
 - PyYAML
 - numpy
 - shutil
-
-## 🚚 Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/aniketpoojari/Monocular-Depth-Estimation.git
-
-# Change directory
-cd Monocular-Depth-Estimation
-
-# Install dependencies
-pip install -r requirements.txt
-```
 
 ## 📊 Data
 
