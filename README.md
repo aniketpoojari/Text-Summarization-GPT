@@ -10,9 +10,9 @@ Text Summarization GPT
 - [Requirements](#requirements)
 - [Data](#data)
 - [Model Training](#model-training)
-- [Usage](#usage)
 - [Evaluation](#evaluation)
 - [Results](#results)
+- [Usage](#usage)
 - [Docker](#docker)
 
 ## 📄 Introduction
