@@ -73,8 +73,8 @@ pip install -r requirements.txt
 ## 📊 Data
 
 - Downloaded from the Xsum Dataset - https://huggingface.co/datasets/sentence-transformers/xsum
-- save the train.src.txt and train.tgt.txt files in the data/raw/summary folder
-- track both the files using DVC - dvc add path/to/directory/
+- save the `train.src.txt` and `train.tgt.txt` files in the data/raw/summary folder
+- track both the files using DVC - `dvc add path/to/directory/`
 
 ## 🤖 Model Training
 
@@ -89,7 +89,7 @@ dvc repro
 
 ## 📈 Evaluation
 
-- RMSE score is used to evaluate the pretrained model
+- Cross-Entropy score is used to evaluate the pretrained model
 - ROUGE-L score is used to evaluate the summary model
 
 ## 🎉 Results
