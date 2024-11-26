@@ -9,7 +9,6 @@ import mlflow
 from datetime import datetime
 import math
 import numpy as np
-from torch.optim.lr_scheduler import CosineAnnealingLR
 from rouge_score import rouge_scorer
 from transformers import GPT2Tokenizer
 

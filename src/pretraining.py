@@ -8,7 +8,6 @@ import mlflow
 import pickle
 import math
 from datetime import datetime
-from torch.optim.lr_scheduler import CosineAnnealingLR
 
 
 def training(config_path):
