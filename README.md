@@ -42,6 +42,8 @@ The goal of this project is to create a model that generates high-quality, conci
 - [Summary Finetuning](src/summary_generation.py)
 - [Best Summary Model Selection](src/log_summary_model.py)
 - [Streamlit App](saved_models/website.py)
+- [Dockerfile](Dockerfile)
+- [SageMaker](sagemaker)
 
 ## 🚚 Installation
 
