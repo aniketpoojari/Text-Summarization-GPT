@@ -190,7 +190,7 @@ def training(config_path):
                 optimizer.step()
 
                 # sheduler.step()
-
+            
         # save the model
         mlflow.pytorch.log_model(
             model,

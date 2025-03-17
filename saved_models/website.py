@@ -7,7 +7,7 @@ from torch.nn import functional as F
 @st.cache_resource
 def load_model():
     model_path = "summary.pth"
-    model = torch.load(model_path, map_location=torch.device("cpu"))
+    model = torch.load(model_path, map_location=torch.device("cpu"), weights_only=False)
     return model
 
 

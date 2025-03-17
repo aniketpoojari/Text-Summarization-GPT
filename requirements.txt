@@ -8,4 +8,4 @@ tqdm
 rouge-score
 PyYAML
 numpy
-shutil
+streamlit
