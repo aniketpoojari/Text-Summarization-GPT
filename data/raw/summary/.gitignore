@@ -1,7 +1,2 @@
-/filtered.parquet
-/train_full.pkl
-/train_summary.pkl
-/val_full.pkl
-/val_summary.pkl
 /train.src.txt
 /train.tgt.txt

@@ -1,106 +1,109 @@
 import streamlit as st
 import torch
-from transformers import GPT2Tokenizer
-from torch.nn import functional as F
+import numpy as np
+import onnxruntime as ort
+import tiktoken
+import time
 
+# --- CONFIG ---
+BLOCK_SIZE = 128
+ONNX_MODEL_PATH = "onnx_models/summarizer.onnx"
+PYTORCH_MODEL_PATH = "summary.pth"
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+tokenizer = tiktoken.get_encoding("gpt2")
 
+# --- Model Loaders ---
 @st.cache_resource
-def load_model():
-    model_path = "summary.pth"
-    model = torch.load(model_path, map_location=torch.device("cpu"), weights_only=False)
+def load_pytorch_model():
+    model = torch.load(PYTORCH_MODEL_PATH, map_location=DEVICE, weights_only=False)
+    model.eval()
     return model
 
+@st.cache_resource
+def load_onnx_model():
+    providers = ["CUDAExecutionProvider"] if DEVICE == "cuda" else ["CPUExecutionProvider"]
+    session = ort.InferenceSession(ONNX_MODEL_PATH, providers=providers)
+    return session
 
-model = load_model()
+# --- Inference Functions ---
+def generate_pytorch(model, article, tokenizer, temperature=0.7, top_k=50, max_length=BLOCK_SIZE):
+    prompt = f"Summarize the following article.\n\n### Article:\n{article}\n\n### Summary:\n"
+    l = len(prompt)
+    prompt_ids = tokenizer.encode(prompt, allowed_special="all")
+    prompt_tensor = torch.tensor([prompt_ids], dtype=torch.long, device=DEVICE)
+    while prompt_tensor.shape[1] <= max_length:
+        out = model(prompt_tensor)
+        logits = out[:, -1, :]
+        if top_k > 0:
+            top_logits, _ = torch.topk(logits, top_k)
+            min_val = top_logits[:, -1]
+            logits = torch.where(logits < min_val, torch.tensor(float('-inf')).to(logits.device), logits)
+        if temperature > 0:
+            logits = logits / temperature
+            probs = torch.softmax(logits, dim=-1)
+            idx_next = torch.multinomial(probs, num_samples=1)
+        else:
+            idx_next = torch.argmax(logits, dim=-1, keepdim=True)
+        if idx_next.item() == 50256:
+            break
+        prompt_tensor = torch.cat((prompt_tensor, idx_next), dim=1)
+    return tokenizer.decode(prompt_tensor[0].tolist())[l:]
 
-# Load the GPT-2 tokenizer
-tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-# Add special tokens
-special_tokens_dict = {"pad_token": "<PAD>", "sep_token": "<SEP>"}
-tokenizer.add_special_tokens(special_tokens_dict)
+def generate_onnx(session, article, tokenizer, temperature=0.7, top_k=50, max_length=BLOCK_SIZE):
+    prompt = f"Summarize the following article.\n\n### Article:\n{article}\n\n### Summary:\n"
+    l = len(prompt)
+    input_ids = tokenizer.encode(prompt, allowed_special="all")
+    generated_ids = list(input_ids)
+    for _ in range(max_length - len(input_ids)):
+        input_array = np.array([generated_ids[-max_length:]], dtype=np.int64)
+        outputs = session.run(None, {"input_ids": input_array})
+        logits = outputs[0][:, -1, :]  # last token logits
+        if top_k > 0:
+            top_k_indices = np.argpartition(-logits, top_k, axis=-1)[:, :top_k]
+            top_k_logits = np.take_along_axis(logits, top_k_indices, axis=-1)
+            min_val = np.min(top_k_logits, axis=-1, keepdims=True)
+            logits = np.where(logits < min_val, -np.inf, logits)
+        if temperature > 0:
+            logits = logits / temperature
+            exp_logits = np.exp(logits - np.max(logits, axis=-1, keepdims=True))
+            probs = exp_logits / np.sum(exp_logits, axis=-1, keepdims=True)
+            idx_next = int(np.random.choice(logits.shape[-1], p=probs[0]))
+        else:
+            idx_next = int(np.argmax(logits, axis=-1)[0])
+        if idx_next == 50256:
+            break
+        generated_ids.append(idx_next)
+    return tokenizer.decode(generated_ids)[l:]
 
-
-def generate_text(
-    model, context, device, max_length=128, stop_token_id=50257, top_k=50
-):
-    """
-    Generates text from the given context using a pre-trained transformer model.
-
-    Args:
-        context (tensor): The initial input context (e.g., a prompt or seed text).
-        model (torch.nn.Module): The pre-trained transformer model.
-        device (torch.device): The device (CPU or GPU) to run the model on.
-        max_length (int): The maximum length of the generated sequence.
-        stop_token_id (int): The token ID that signals the end of the generation.
-        top_k (int): The number of top probable tokens to consider for each generation step.
-
-    Returns:
-        tensor: The generated text sequence as a tensor of token IDs.
-    """
-
-    # Ensure the input context is a tensor and move it to the appropriate device
-    context = torch.tensor(context, dtype=torch.long, device=device)
-
-    # Add batch dimension (batch size of 1)
-    context = context.unsqueeze(0)
-
-    # Start with the initial context as the generated sequence
-    generated = context
-
-    # Set the model to evaluation mode (no gradients needed)
-    model.eval()
-
-    # Generate tokens until the desired length is reached or stop token is encountered
-    with torch.no_grad():
-        while generated.shape[1] < max_length:
-            # Pass the current generated sequence through the model to get logits
-            logits = model(generated)
-
-            # Focus on the logits of the last token generated
-            logits = logits[:, -1, :]
-
-            # Convert logits to probabilities using softmax
-            probs = F.softmax(logits, dim=-1)
-
-            # Get the top-k probable tokens and their corresponding probabilities
-            topk_probs, topk_indices = torch.topk(probs, top_k, dim=-1)
-
-            # Sample one token from the top-k options using multinomial sampling
-            sampled_token_ix = torch.multinomial(topk_probs, 1)  # (batch_size, 1)
-
-            # Gather the corresponding token ID based on the sampled index
-            next_token = torch.gather(
-                topk_indices, -1, sampled_token_ix
-            )  # (batch_size, 1)
-
-            # Check if the stop token is generated (e.g., end-of-sequence token)
-            if next_token == stop_token_id:
-                break
-
-            # Append the sampled token to the generated sequence
-            generated = torch.cat((generated, next_token), dim=1)
-
-    # Return the generated sequence of token IDs
-    return generated
-
-
-# Title of the app
+# --- Streamlit UI ---
 st.title("Text Summarizer")
 
-user_input = st.text_input("Enter some text:")
+# Model selection
+model_choice = st.selectbox(
+    "Select inference backend:",
+    ("PyTorch", "ONNX"),
+    index=1  # default to ONNX
+)
 
-if st.button("Start Prediction"):
+user_input = st.text_area("Enter text to summarize:", height=200)
+col1, col2 = st.columns(2)
+temperature = col1.slider("Temperature", 0.1, 1.0, 0.7, 0.1)
+top_k = col2.slider("Top-k", 0, 100, 50, 1)
+model = load_pytorch_model()
+session = load_onnx_model()
 
+if st.button("Generate Summary"):
     if user_input:
-
-        input_text = tokenizer.encode(user_input) + [
-            tokenizer.sep_token_id
-        ]  # enoded + sep
-
-        output_text = generate_text(model, input_text, "cpu")
-
-        output_text = tokenizer.decode(output_text.tolist()[0])
-
-        summary = output_text.split("<SEP>")[1]
-
-        st.write("Summary: ", summary)
+        with st.spinner("Generating summary..."):
+            if model_choice == "PyTorch":
+                start_time = time.time()
+                output_text = generate_pytorch(model, user_input, tokenizer, temperature=temperature, top_k=top_k)
+                end_time = time.time()
+            else:
+                start_time = time.time()
+                output_text = generate_onnx(session, user_input, tokenizer, temperature=temperature, top_k=top_k)
+                end_time = time.time()
+            execution_time = end_time - start_time
+            st.write(f"Execution time: {execution_time:.2f} seconds")
+            st.subheader("Generated Summary:")
+            st.write(output_text)

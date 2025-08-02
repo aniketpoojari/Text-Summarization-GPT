@@ -1,4 +1,3 @@
-/training_completion.txt
+*.txt
 /mlflow.db
-/training_summary_completion.txt
-/mlruns/*
+dvc.lock

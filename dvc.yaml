@@ -1,34 +1,53 @@
 stages:
   clean_pretraining_data:
-    cmd: python src/clean_pretraining_data.py --config=params.yaml
+    cmd: python src/pretraining/clean_pretraining_data.py --config=params.yaml
     deps:
-      - src/clean_pretraining_data.py
+      - src/pretraining/clean_pretraining_data.py
       - data/raw/summary/train.src.txt
     params:
       - data.summarization_full_txt
-      - data.pretraining_txt
+      - data.pretraining_pkl
+      - data.pretraining_size
     outs:
-      - data/raw/pretraining/pretraining.txt
+      - data/processed/pretraining/pretraining.pkl
 
   create_pretraining_split:
-    cmd: python src/create_pretraining_split.py --config=params.yaml
+    cmd: python src/pretraining/create_pretraining_split.py --config=params.yaml
     deps:
-      - src/create_pretraining_split.py
-      - data/raw/pretraining/pretraining.txt
+      - src/pretraining/create_pretraining_split.py
+      - data/processed/pretraining/pretraining.pkl
     params:
-      - data.pretraining_txt
+      - data.pretraining_pkl
+      - data.pretraining_train
+      - data.pretraining_val
+      - data.pretraining_split
+    outs:
+      - data/processed/pretraining/pretraining_train.pkl
+      - data/processed/pretraining/pretraining_val.pkl
+
+  push_pretraining_data_to_s3:
+    cmd: python src/pretraining/push_pretraining_data_to_s3.py --config=params.yaml
+    deps:
+      - src/pretraining/push_pretraining_data_to_s3.py
+      - data/processed/pretraining/pretraining_train.pkl
+      - data/processed/pretraining/pretraining_val.pkl
+    params:
+      - data.pretraining_s3
       - data.pretraining_train
       - data.pretraining_val
     outs:
-      - data/raw/pretraining/pretraining_train.pkl
-      - data/raw/pretraining/pretraining_val.pkl
-
+      - push_pretraining_data_to_s3_completion.txt
+    
   pretraining:
-    cmd: python src/pretraining.py --config=params.yaml
+    # cmd: python src/pretraining.py --config=params.yaml
+    cmd: python src/pretraining/trainingjob.py --config=params.yaml
     deps:
-      - src/pretraining.py
-      - data/raw/pretraining/pretraining_train.pkl
-      - data/raw/pretraining/pretraining_val.pkl
+      - src/pretraining/trainingjob.py
+      - src/pretraining/code/pretraining_sagemaker_deepspeed.py
+      - src/pretraining/code/dataloader.py
+      - src/pretraining/code/model.py
+      - src/pretraining/code/requirements.txt
+      - push_pretraining_data_to_s3_completion.txt
     params:
       - hyperparameters.vocab_size
       - hyperparameters.n_embd
@@ -43,64 +62,75 @@ stages:
       - hyperparameters.learning_rate
       - hyperparameters.eval_iters
       - hyperparameters.eval_interval
-      - data.pretraining_train
-      - data.pretraining_val
       - mlflow_pretraining.server_uri
       - mlflow_pretraining.experiment_name
       - mlflow_pretraining.run_name
       - mlflow_pretraining.registered_model_name
+      - mlflow_pretraining.s3_mlruns_bucket
+      - mlflow_pretraining.tracking_username
+      - mlflow_pretraining.tracking_password
+      - pytorch_estimator.entry_point
+      - pytorch_estimator.source_dir
+      - pytorch_estimator.role
+      - pytorch_estimator.framework_version
+      - pytorch_estimator.py_version
+      - pytorch_estimator.instance_count
+      - pytorch_estimator.instance_type
+      - pytorch_estimator.use_spot_instances
+      - pytorch_estimator.max_wait
+      - pytorch_estimator.max_run
+      - pytorch_estimator.s3_train_data
     outs:
       - training_completion.txt
 
   log_pretraining_model:
-    cmd: python src/log_pretraining_model.py --config=params.yaml
+    cmd: python src/pretraining/log_pretraining_model.py --config=params.yaml
     deps:
-      - src/log_pretraining_model.py
+      - src/pretraining/log_pretraining_model.py
       - training_completion.txt
     params:
       - mlflow_pretraining.server_uri
       - mlflow_pretraining.experiment_name
+      - mlflow_pretraining.s3_mlruns_bucket
     outs:
       - saved_models/pretrained.pth
 
   create_summary_data:
-    cmd: python src/create_summary_data.py --config=params.yaml
+    cmd: python src/summary/create_summary_data.py --config=params.yaml
     deps:
-      - src/create_summary_data.py
+      - src/summary/create_summary_data.py
       - data/raw/summary/train.src.txt
       - data/raw/summary/train.tgt.txt
     params:
       - data.summarization_full_txt
       - data.summarization_summary_txt
       - hyperparameters.block_size
+      - data.summary_size
     outs:
-      - data/raw/summary/filtered.parquet
+      - data/processed/summary/filtered.parquet
 
   create_summary_split:
-    cmd: python src/create_summary_split.py --config=params.yaml
+    cmd: python src/summary/create_summary_split.py --config=params.yaml
     deps:
-      - src/create_summary_split.py
-      - data/raw/summary/filtered.parquet
+      - src/summary/create_summary_split.py
+      - data/processed/summary/filtered.parquet
     params:
       - data.summarization_filtered_parquet
-      - data.train_full
-      - data.train_summary
-      - data.val_full
-      - data.val_summary
+      - data.summary_train
+      - data.summary_val
     outs:
-      - data/raw/summary/train_full.pkl
-      - data/raw/summary/train_summary.pkl
-      - data/raw/summary/val_full.pkl
-      - data/raw/summary/val_summary.pkl
+      - data/processed/summary/train_tensor.pt
+      - data/processed/summary/val_tensor.pt
 
   summary_finetuning:
-    cmd: python src/summary_training.py --config=params.yaml
+    cmd: python src/summary/summary_training.py --config=params.yaml
     deps:
-      - src/summary_training.py
-      - data/raw/summary/train_full.pkl
-      - data/raw/summary/train_summary.pkl
-      - data/raw/summary/val_full.pkl
-      - data/raw/summary/val_summary.pkl
+      - src/summary/summary_training.py
+      - src/summary/loss.py
+      - src/summary/model.py
+      - src/summary/dataloader.py
+      - data/processed/summary/train_tensor.pt
+      - data/processed/summary/val_tensor.pt
       - saved_models/pretrained.pth
       - training_completion.txt
     params:
@@ -112,10 +142,8 @@ stages:
       - summary_hyperparameters.mini_batch_size
       - hyperparameters.eval_interval
       - hyperparameters.eval_iters
-      - data.train_full
-      - data.train_summary
-      - data.val_full
-      - data.val_summary
+      - data.summary_train
+      - data.summary_val
       - mlflow_summary.experiment_name
       - mlflow_summary.run_name
       - mlflow_summary.registered_model_name
@@ -124,9 +152,9 @@ stages:
       - training_summary_completion.txt
 
   log_summary_model:
-    cmd: python src/log_summary_model.py --config=params.yaml
+    cmd: python src/summary/log_summary_model.py --config=params.yaml
     deps:
-      - src/log_summary_model.py
+      - src/summary/log_summary_model.py
       - training_summary_completion.txt
     params:
       - mlflow_summary.server_uri

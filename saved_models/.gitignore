@@ -1,2 +1,3 @@
 /pretrained.pth
 /summary.pth
+/onnx_models/*

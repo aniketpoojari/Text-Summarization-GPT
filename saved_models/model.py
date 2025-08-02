@@ -2,7 +2,6 @@ import torch
 from torch.nn import functional as F
 import torch.nn as nn
 
-
 class CausalSelfAttention(nn.Module):
 
     def __init__(self, n_embd, n_head):  # dropout:
@@ -19,23 +18,38 @@ class CausalSelfAttention(nn.Module):
 
         # self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x):
+    def forward(self, x, attention_mask=None):
         B, T, C = x.shape
         qkv = self.c_attn(x)
         q, k, v = qkv.split(self.n_embd, dim=2)
-        k = k.view(B, T, self.n_head, C // self.n_head).transpose(
-            1, 2
-        )  # (B, nh, T, hs)
-        q = q.view(B, T, self.n_head, C // self.n_head).transpose(
-            1, 2
-        )  # (B, nh, T, hs)
-        v = v.view(B, T, self.n_head, C // self.n_head).transpose(
-            1, 2
-        )  # (B, nh, T, hs)
-        y = F.scaled_dot_product_attention(q, k, v, is_causal=True)  # flash attention
-        y = (
-            y.transpose(1, 2).contiguous().view(B, T, C)
-        )  # re-assemble all head outputs side by side
+        k = k.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)  # (B, nh, T, hs)
+        q = q.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)  # (B, nh, T, hs)
+        v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2)  # (B, nh, T, hs)
+
+        if attention_mask is not None:
+            # Convert from [B, T] to [B, 1, 1, T] for broadcasting
+            attention_mask = attention_mask.view(B, 1, 1, T)
+
+            # Create a causal mask that also respects padding
+            # First create a causal mask (lower triangular)
+            causal_mask = torch.tril(torch.ones(T, T, device=x.device)).view(1, 1, T, T)
+
+            # Combine with padding mask (0 for padding tokens)
+            # We need to broadcast the padding mask to match causal mask dimensions
+            combined_mask = causal_mask * attention_mask
+
+            # Use the mask with scaled_dot_product_attention
+            y = F.scaled_dot_product_attention(
+                q, k, v,
+                attn_mask=combined_mask,
+                is_causal=False  # We're handling causality in our custom mask
+            )
+        else:
+            # Use default causal mask
+            y = F.scaled_dot_product_attention(q, k, v, is_causal=True)
+
+
+        y = (y.transpose(1, 2).contiguous().view(B, T, C))  # re-assemble all head outputs side by side
         # output projection
         y = self.c_proj(y)
         return y
@@ -66,8 +80,8 @@ class Block(nn.Module):
         self.ln_2 = nn.LayerNorm(n_embd)
         self.mlp = MLP(n_embd)
 
-    def forward(self, x):
-        x = x + self.attn(self.ln_1(x))
+    def forward(self, x, attention_mask=None):
+        x = x + self.attn(self.ln_1(x), attention_mask)
         x = x + self.mlp(self.ln_2(x))
         return x
 
@@ -108,7 +122,7 @@ class GPT(nn.Module):
         elif isinstance(module, nn.Embedding):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
-    def forward(self, idx):
+    def forward(self, idx, attention_mask=None):
         # idx is of shape (B, T)
         B, T = idx.shape
 
@@ -120,7 +134,7 @@ class GPT(nn.Module):
 
         # forward the blocks of the transformer
         for block in self.transformer.h:
-            x = block(x)
+            x = block(x, attention_mask)
 
         # forward the final layernorm and the classifier
         x = self.transformer.ln_f(x)

@@ -1,35 +1,68 @@
 data:
-  pretraining_txt: data/raw/pretraining/pretraining.txt
-  pretraining_train: data/raw/pretraining/pretraining_train.pkl
-  pretraining_val: data/raw/pretraining/pretraining_val.pkl
+  pretraining_size: 200000
+  pretraining_pkl: data/processed/pretraining/pretraining.pkl
+  pretraining_train: data/processed/pretraining/pretraining_train.pkl
+  pretraining_val: data/processed/pretraining/pretraining_val.pkl
+  pretraining_split: 0.7
+  pretraining_s3: text-summarization-gpt-aniket
+
+  summary_size: 200000
   summarization_full_txt: data/raw/summary/train.src.txt
   summarization_summary_txt: data/raw/summary/train.tgt.txt
-  summarization_filtered_parquet: data/raw/summary/filtered.parquet
-  train_full: data/raw/summary/train_full.pkl
-  train_summary: data/raw/summary/train_summary.pkl
-  val_full: data/raw/summary/val_full.pkl
-  val_summary: data/raw/summary/val_summary.pkl
+  summarization_filtered_parquet: data/processed/summary/filtered.parquet
+  summary_train: data/processed/summary/train_tensor.pt
+  summary_val: data/processed/summary/val_tensor.pt
+
 
 hyperparameters:
-  vocab_size: 50260
+  vocab_size: 50257
   n_embd: 768
   block_size: 128
   n_head: 12
   n_layer: 12
   dropout: 0.2
   learning_rate: 2e-4
-  epochs: 3
-  max_iters: 2500
-  batch_size: 256
+  epochs: 1
+  max_iters: 3000
+  batch_size: 32
   mini_batch_size: 16
-  eval_iters: 50
+  eval_iters: 6
   eval_interval: 500
 
+pytorch_estimator:
+    entry_point: pretraining_sagemaker_deepspeed.py
+    source_dir: src/pretraining/code
+    framework_version: '2.1.0'
+    py_version: py310
+    role: arn:aws:iam::975050169307:role/text-to-image-role
+    instance_count: 2
+    instance_type: ml.g4dn.xlarge
+    max_wait: 7200
+    max_run: 7200
+    use_spot_instances: True
+    s3_train_data: s3://text-summarization-gpt-aniket
+
 mlflow_pretraining:
-  server_uri: sqlite:///mlflow.db
-  experiment_name: Pretraining
+  # server_uri: sqlite:///mlflow.db
+  server_uri: https://dagshub.com/aniketpoojari/Text-Summarization-GPT.mlflow
+  experiment_name: Pretraining 2
   run_name: 1st
   registered_model_name: Pretrained GPT
+  s3_mlruns_bucket: text-summarization-gpt-aniket-mlflow
+  tracking_username: aniketpoojari
+  tracking_password: 38fa619a54d7cdde5e6dcaa55a01a1c14f329bc2
+
+log_pretrained_model:
+  model_dir: saved_models/pretrained.pth
+
+summary_hyperparameters:
+  learning_rate: 5e-5
+  epochs: 1
+  max_iters: 10000
+  batch_size: 16
+  mini_batch_size: 16
+  eval_interval: 500
+  eval_iters: 5
 
 mlflow_summary:
   server_uri: sqlite:///mlflow.db
@@ -37,17 +70,5 @@ mlflow_summary:
   run_name: 1st
   registered_model_name: Summary GPT
 
-log_pretrained_model:
-  model_dir: saved_models/pretrained.pth
-
 log_summary_model:
   model_dir: saved_models/summary.pth
-
-summary_hyperparameters:
-  learning_rate: 5e-5
-  epochs: 1
-  max_iters: 20000
-  batch_size: 32
-  mini_batch_size: 16
-  eval_interval: 500
-  eval_iters: 50

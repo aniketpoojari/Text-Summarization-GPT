@@ -6,7 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /app
 
-COPY requirements.txt /app/requirements.txt
+COPY saved_models/requirements.txt /app/requirements.txt
 
 # Install system dependencies, clean up to reduce image size, and install Python dependencies
 RUN apt-get update && \
